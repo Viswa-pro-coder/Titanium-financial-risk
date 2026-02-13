@@ -88,7 +88,7 @@ export function KanbanBoard({ cards }: KanbanBoardProps) {
                           {card.clientName}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          ${(card.revenue / 1000).toFixed(0)}k ARR
+                          ₹{(card.revenue / 1000).toFixed(0)}k ARR
                         </p>
                       </div>
                       <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-semibold text-primary">

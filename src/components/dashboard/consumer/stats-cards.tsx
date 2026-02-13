@@ -47,7 +47,7 @@ export function StatsCards({ metrics }: StatsCardsProps) {
       icon: Wallet,
       color: 'from-orange-500/10 to-orange-500/5',
       textColor: 'text-orange-500',
-      format: (v: number) => `$${v.toLocaleString()}`,
+      format: (v: number) => `₹${v.toLocaleString()}`,
     },
     {
       label: 'Monthly Income',
@@ -55,7 +55,7 @@ export function StatsCards({ metrics }: StatsCardsProps) {
       icon: TrendingUp,
       color: 'from-emerald-500/10 to-emerald-500/5',
       textColor: 'text-emerald-500',
-      format: (v: number) => `$${v.toLocaleString()}`,
+      format: (v: number) => `₹${v.toLocaleString()}`,
     },
     {
       label: 'Emergency Fund',
@@ -71,7 +71,7 @@ export function StatsCards({ metrics }: StatsCardsProps) {
       icon: Calendar,
       color: 'from-purple-500/10 to-purple-500/5',
       textColor: 'text-purple-500',
-      format: (v: number) => `$${v.toLocaleString()}`,
+      format: (v: number) => `₹${v.toLocaleString()}`,
     },
   ]
 

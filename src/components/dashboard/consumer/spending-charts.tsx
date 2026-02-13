@@ -32,7 +32,7 @@ export function SpendingCharts({
       return (
         <div className="bg-card border border-border rounded-lg p-2 text-xs shadow-lg">
           <p className="text-foreground font-medium">{payload[0].name}</p>
-          <p className="text-muted-foreground">${payload[0].value.toLocaleString()}</p>
+          <p className="text-muted-foreground">₹{payload[0].value.toLocaleString()}</p>
         </div>
       )
     }
@@ -44,7 +44,7 @@ export function SpendingCharts({
       return (
         <div className="bg-card border border-border rounded-lg p-2 text-xs shadow-lg">
           <p className="text-foreground font-medium">{payload[0].payload.date}</p>
-          <p className="text-primary font-semibold">${payload[0].value.toLocaleString()}</p>
+          <p className="text-primary font-semibold">₹{payload[0].value.toLocaleString()}</p>
         </div>
       )
     }

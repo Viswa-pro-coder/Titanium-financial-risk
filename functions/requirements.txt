@@ -1,8 +1,15 @@
-firebase-functions
-firebase-admin
+# Firebase Functions SDK for Python
+firebase-functions>=0.1.0
+
+# Firebase Admin SDK for interacting with Firebase services
+firebase-admin>=6.0.0
+
+# NumPy for advanced numerical computations (used in risk calculations)
+numpy
+
+# Additional dependencies for machine learning and data processing
 xgboost
 pandas
-numpy
 transformers
 peft
 accelerate

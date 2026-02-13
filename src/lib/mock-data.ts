@@ -304,7 +304,7 @@ export const analystQuickStats = [
   },
   {
     label: 'Monthly Revenue',
-    value: '$2.3M',
+    value: '₹2.3M',
     change: 12,
     trend: 'up' as const,
   },

@@ -1,43 +1,54 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
-    function getUserTier() {
-      return request.auth.token.tier;
-    }
+
     function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    function isAnalystForClient(userId) {
-      let analystId = request.auth.uid;
-      return exists(/databases/$(database)/documents/analysts/$(analystId)/client_links/$(userId));
-    }
-    function isInstitutionForUser(userId) {
-      let instId = request.auth.uid;
-      return exists(/databases/$(database)/documents/institutions/$(instId)/users/$(userId));
+      return request.auth != null && request.auth.uid == userId;
     }
 
+    function hasTier(tier) {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tier == tier;
+    }
+
+    // Users collection: users can read/write own data only
     match /users/{userId} {
-      allow read: if isAuthenticated() && (isOwner(userId) || isAnalystForClient(userId) || isInstitutionForUser(userId));
-      allow write: if isAuthenticated() && isOwner(userId);
-      match /{document=**} {
-        allow read: if isAuthenticated() && (isOwner(userId) || isAnalystForClient(userId) || isInstitutionForUser(userId));
-        allow write: if isAuthenticated() && isOwner(userId);
-      }
+      allow read, write: if isOwner(userId);
     }
 
-    match /institutions/{instId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == instId && getUserTier() == "B2B";
+    // Transactions: users read own, create own, no update/delete
+    match /transactions/{transactionId} {
+      allow read: if isOwner(resource.data.userId);
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
     }
 
-    match /analysts/{analystId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == analystId && getUserTier() == "B2Pro";
+    // Risk scores: read-only for owners, no direct writes
+    match /risk_scores/{riskScoreId} {
+      allow read: if isOwner(resource.data.userId);
+      allow write: if false;
     }
 
-    match /shared/{document=**} {
-      allow read: if isAuthenticated();
+    // Institution metrics: read-only for b2b and b2pro tiers
+    match /institution_metrics/{metricId} {
+      allow read: if hasTier("b2b") || hasTier("b2pro");
+      allow write: if false;
+    }
+
+    // Analytics: read-only for b2b and b2pro tiers
+    match /analytics/{analyticId} {
+      allow read: if hasTier("b2b") || hasTier("b2pro");
+      allow write: if false;
+    }
+
+    // Alerts: read-only for owners
+    match /alerts/{alertId} {
+      allow read: if isOwner(resource.data.userId);
       allow write: if false;
     }
   }

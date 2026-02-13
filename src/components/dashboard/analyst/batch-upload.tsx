@@ -1,22 +1,27 @@
 'use client'
 
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState } from 'react'
 import { Upload, X, CheckCircle2, Clock } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
+import { app } from '@/lib/firebase'
+import { useAuth } from '@/hooks/useAuth'
 
 interface FileUpload {
   id: string
   name: string
   size: number
-  status: 'pending' | 'processing' | 'completed' | 'error'
+  status: 'pending' | 'uploading' | 'processing' | 'completed' | 'error'
   recordsCount?: number
   progress?: number
+  url?: string
 }
 
 export function BatchUpload() {
+  const { user } = useAuth()
   const [files, setFiles] = useState<FileUpload[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -27,47 +32,64 @@ export function BatchUpload() {
 
   const handleFileSelect = (selectedFiles: FileList | null) => {
     if (!selectedFiles) return
+    if (!user) {
+      alert("Please log in to upload files.");
+      return;
+    }
+
+    const storage = getStorage(app);
 
     Array.from(selectedFiles).forEach((file) => {
+      const fileId = generateFileId();
       const newFile: FileUpload = {
-        id: generateFileId(),
+        id: fileId,
         name: file.name,
         size: file.size,
         status: 'pending',
+        progress: 0,
       }
 
       setFiles((prev) => [...prev, newFile])
 
-      // Simulate upload
-      setTimeout(() => {
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === newFile.id
-              ? { ...f, status: 'processing', progress: 45 }
-              : f
-          )
-        )
-      }, 500)
+      // Start Real Upload
+      const storageRef = ref(storage, `csv-uploads/${user.uid}/${fileId}-${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
 
-      setTimeout(() => {
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === newFile.id
-              ? {
+      setFiles(prev => prev.map(f => f.id === fileId ? { ...f, status: 'uploading' } : f));
+
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setFiles(prev => prev.map(f => f.id === fileId ? { ...f, progress: progress } : f));
+        },
+        (error) => {
+          console.error("Upload error:", error);
+          setFiles(prev => prev.map(f => f.id === fileId ? { ...f, status: 'error' } : f));
+        },
+        () => {
+          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            // Upload complete, mark as processing (simulated backend trigger)
+            setFiles(prev => prev.map(f => f.id === fileId ? { ...f, status: 'processing', progress: 100, url: downloadURL } : f));
+
+            // Simulate backend processing time
+            setTimeout(() => {
+              setFiles(prev => prev.map(f =>
+                f.id === fileId ? {
                   ...f,
                   status: 'completed',
-                  progress: 100,
-                  recordsCount: Math.floor(Math.random() * 1000) + 100,
-                }
-              : f
-          )
-        )
-      }, 2000)
+                  recordsCount: Math.floor(Math.random() * 500) + 1  // Mock record count
+                } : f
+              ));
+            }, 2000);
+          });
+        }
+      );
     })
   }
 
   const removeFile = (id: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== id))
+    // Note: cancellation of active upload task not implemented for brevity
   }
 
   const getStatusIcon = (status: string) => {
@@ -75,6 +97,7 @@ export function BatchUpload() {
       case 'completed':
         return <CheckCircle2 className="h-5 w-5 text-emerald-500" />
       case 'processing':
+      case 'uploading':
       case 'pending':
         return <Clock className="h-5 w-5 text-amber-500" />
       case 'error':
@@ -89,6 +112,8 @@ export function BatchUpload() {
       case 'completed':
         return 'bg-emerald-500/20 text-emerald-700 border-emerald-500/50'
       case 'processing':
+      case 'uploading':
+        return 'bg-blue-500/20 text-blue-700 border-blue-500/50'
       case 'pending':
         return 'bg-amber-500/20 text-amber-700 border-amber-500/50'
       case 'error':
@@ -171,7 +196,7 @@ export function BatchUpload() {
                     )}
                   </div>
 
-                  {file.progress && file.progress < 100 && (
+                  {file.progress !== undefined && file.progress < 100 && (
                     <div className="w-full h-1.5 bg-border rounded-full mt-1 overflow-hidden">
                       <div
                         className="h-full bg-primary transition-all duration-300"
@@ -191,7 +216,7 @@ export function BatchUpload() {
                   >
                     {file.status}
                   </Badge>
-                  {file.status !== 'processing' && (
+                  {file.status !== 'uploading' && file.status !== 'processing' && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -209,8 +234,10 @@ export function BatchUpload() {
 
         {/* Actions */}
         <div className="flex gap-2 pt-2">
-          <Button className="flex-1 bg-primary hover:bg-primary/90">
-            Upload Files
+          {/* Simulate clicking the hidden input when "Upload Files" is clicked if no files selected, 
+               or just act as a trigger. For now, disabling if no files or just leaving as UI actions. */}
+          <Button className="flex-1 bg-primary hover:bg-primary/90" onClick={() => fileInputRef.current?.click()}>
+            Select Files
           </Button>
           <Button variant="outline" className="flex-1">
             Download Template

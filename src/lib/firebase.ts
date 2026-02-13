@@ -30,4 +30,6 @@ export const getAnalyticsInstance = async () => {
   return null;
 };
 
+// Export app both as named and default export for compatibility
+export { app };
 export default app;

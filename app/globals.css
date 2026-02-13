@@ -1,0 +1,250 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .font-mono-table {
+    font-family: var(--font-mono);
+  }
+}
+
+@layer base {
+  :root {
+    /* FinGuard AI - Dark Professional Palette */
+    /* Background & Surface */
+    --background: 224 13% 2%;
+    --foreground: 225 17% 97%;
+    --card: 224 13% 6%;
+    --card-foreground: 225 17% 97%;
+    --popover: 224 13% 6%;
+    --popover-foreground: 225 17% 97%;
+    
+    /* Primary - Emerald for main actions */
+    --primary: 152 71% 40%;
+    --primary-foreground: 224 13% 2%;
+    
+    /* Secondary - Slate for secondary actions */
+    --secondary: 224 13% 16%;
+    --secondary-foreground: 225 17% 97%;
+    
+    /* Muted - For disabled/secondary text */
+    --muted: 224 13% 16%;
+    --muted-foreground: 224 7% 60%;
+    
+    /* Accent - Emerald highlights */
+    --accent: 152 71% 40%;
+    --accent-foreground: 224 13% 2%;
+    
+    /* Destructive - Rose for alerts */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    
+    /* Borders & Inputs */
+    --border: 224 13% 12%;
+    --input: 224 13% 12%;
+    --ring: 152 71% 40%;
+    
+    /* Chart Colors */
+    --chart-1: 152 71% 40%;
+    --chart-2: 45 93% 50%;
+    --chart-3: 0 84.2% 60.2%;
+    --chart-4: 217.2 91.2% 59.8%;
+    --chart-5: 282.4 80.3% 52.2%;
+    
+    /* Sidebar */
+    --sidebar-background: 224 13% 4%;
+    --sidebar-foreground: 225 17% 90%;
+    --sidebar-primary: 152 71% 40%;
+    --sidebar-primary-foreground: 224 13% 2%;
+    --sidebar-accent: 224 13% 12%;
+    --sidebar-accent-foreground: 225 17% 97%;
+    --sidebar-border: 224 13% 12%;
+    --sidebar-ring: 152 71% 40%;
+    
+    /* Custom Tokens */
+    --success: 152 71% 40%;
+    --warning: 45 93% 50%;
+    --danger: 0 84.2% 60.2%;
+    
+    --radius: 0.5rem;
+  }
+  
+  .dark {
+    --background: 224 13% 2%;
+    --foreground: 225 17% 97%;
+    --card: 224 13% 6%;
+    --card-foreground: 225 17% 97%;
+    --popover: 224 13% 6%;
+    --popover-foreground: 225 17% 97%;
+    --primary: 152 71% 40%;
+    --primary-foreground: 224 13% 2%;
+    --secondary: 224 13% 16%;
+    --secondary-foreground: 225 17% 97%;
+    --muted: 224 13% 16%;
+    --muted-foreground: 224 7% 60%;
+    --accent: 152 71% 40%;
+    --accent-foreground: 224 13% 2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 224 13% 12%;
+    --input: 224 13% 12%;
+    --ring: 152 71% 40%;
+    --chart-1: 152 71% 40%;
+    --chart-2: 45 93% 50%;
+    --chart-3: 0 84.2% 60.2%;
+    --chart-4: 217.2 91.2% 59.8%;
+    --chart-5: 282.4 80.3% 52.2%;
+    --sidebar-background: 224 13% 4%;
+    --sidebar-foreground: 225 17% 90%;
+    --sidebar-primary: 152 71% 40%;
+    --sidebar-primary-foreground: 224 13% 2%;
+    --sidebar-accent: 224 13% 12%;
+    --sidebar-accent-foreground: 225 17% 97%;
+    --sidebar-border: 224 13% 12%;
+    --sidebar-ring: 152 71% 40%;
+    --success: 152 71% 40%;
+    --warning: 45 93% 50%;
+    --danger: 0 84.2% 60.2%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* FinGuard AI Custom Animations */
+@layer utilities {
+  @keyframes gauge-spin {
+    from {
+      transform: rotate(-90deg);
+      opacity: 0;
+    }
+    to {
+      transform: rotate(0deg);
+      opacity: 1;
+    }
+  }
+
+  @keyframes number-count {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-over-enter {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-over-exit {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.8;
+    }
+  }
+
+  @keyframes chart-enter {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-gauge-spin {
+    animation: gauge-spin 1s ease-out forwards;
+  }
+
+  .animate-number-count {
+    animation: number-count 0.6s ease-in-out forwards;
+  }
+
+  .animate-slide-over-enter {
+    animation: slide-over-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-slide-over-exit {
+    animation: slide-over-exit 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  .animate-chart-enter {
+    animation: chart-enter 0.4s ease-out;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+
+  .transition-smooth {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .transition-smooth-lg {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .delay-100 {
+    animation-delay: 100ms;
+  }
+
+  .delay-200 {
+    animation-delay: 200ms;
+  }
+}

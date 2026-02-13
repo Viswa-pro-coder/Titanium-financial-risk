@@ -1,0 +1,11 @@
+firebase-functions
+firebase-admin
+xgboost
+pandas
+numpy
+transformers
+peft
+accelerate
+bitsandbytes
+chromadb
+sentence-transformers

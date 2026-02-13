@@ -153,3 +153,48 @@ export interface UserProfile {
   organization?: string
   role?: string
 }
+
+/* Firestore Data Models */
+
+export interface FirestoreUser {
+  uid: string;
+  name: string;
+  email: string;
+  tier: 'B2C';
+  createdAt: Date;
+}
+
+export interface FirestoreInstitution {
+  id: string;
+  name: string;
+  type: string;
+  tier: 'B2B';
+  createdAt: Date;
+  portfolioValue: number;
+  clientsCount: number;
+}
+
+export interface FirestoreAnalyst {
+  id: string;
+  name: string;
+  email: string;
+  specialization: string;
+  tier: 'B2Pro';
+  createdAt: Date;
+}
+
+export interface FirestoreTransaction {
+  id: string;
+  amount: number;
+  date: Date;
+  description: string;
+  category: string;
+  merchant?: string;
+  riskScore?: number;
+}
+
+export interface FirestoreClientLink {
+  clientId: string;
+  assignedAt: Date;
+  status: 'Active' | 'Inactive';
+}

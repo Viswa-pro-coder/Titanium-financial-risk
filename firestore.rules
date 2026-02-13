@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function getUserTier() {
+      return request.auth.token.tier;
+    }
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    function isAnalystForClient(userId) {
+      let analystId = request.auth.uid;
+      return exists(/databases/$(database)/documents/analysts/$(analystId)/client_links/$(userId));
+    }
+    function isInstitutionForUser(userId) {
+      let instId = request.auth.uid;
+      return exists(/databases/$(database)/documents/institutions/$(instId)/users/$(userId));
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAnalystForClient(userId) || isInstitutionForUser(userId));
+      allow write: if isAuthenticated() && isOwner(userId);
+      match /{document=**} {
+        allow read: if isAuthenticated() && (isOwner(userId) || isAnalystForClient(userId) || isInstitutionForUser(userId));
+        allow write: if isAuthenticated() && isOwner(userId);
+      }
+    }
+
+    match /institutions/{instId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == instId && getUserTier() == "B2B";
+    }
+
+    match /analysts/{analystId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == analystId && getUserTier() == "B2Pro";
+    }
+
+    match /shared/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+  }
+}

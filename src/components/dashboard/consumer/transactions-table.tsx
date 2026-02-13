@@ -137,7 +137,7 @@ export function TransactionsTable({ transactions }: TransactionsTableProps) {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right font-semibold text-foreground">
-                    -${transaction.amount.toFixed(2)}
+                    -₹{transaction.amount.toFixed(2)}
                   </TableCell>
                   <TableCell>
                     {transaction.riskFlag && (

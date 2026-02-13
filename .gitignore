@@ -1,10 +1,40 @@
-# v0 runtime files (should only exist in preview, not in git)
-__v0_runtime_loader.js
-__v0_devtools.tsx
-__v0_jsx-dev-runtime.ts
-
-# Common ignores
+# Node
 node_modules/
+dist/
+out/
 .next/
-.env*.local
+coverage/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.env/
+
+# Firebase
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
 .DS_Store
+
+# AI Models & Data
+ai/models/*
+ai/data/*
+ai/adapters/*
+!ai/models/.gitkeep
+!ai/data/.gitkeep
+!ai/adapters/.gitkeep

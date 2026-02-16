@@ -11,8 +11,12 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { pdf } from '@react-pdf/renderer'
+import ReportPDF from './ReportPDF'
 import { ReportTemplate } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/app/contexts/authContext'
+import { useState } from 'react'
 
 interface ReportTemplatesProps {
   templates: ReportTemplate[]
@@ -26,6 +30,46 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 }
 
 export function ReportTemplates({ templates }: ReportTemplatesProps) {
+  const { user } = useAuth()
+  const [generating, setGenerating] = useState<string | null>(null)
+
+  const handleGenerate = async (template: ReportTemplate) => {
+    if (!user) return
+
+    setGenerating(template.id)
+    try {
+      const response = await fetch('https://us-central1-finguard-ai-55aec.cloudfunctions.net/generate_report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          analystId: user.uid,
+          templateId: template.id
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Create a blob and download
+        const report = data.report
+        // Generate PDF
+        const blob = await pdf(<ReportPDF report={data.report} />).toBlob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${template.id}-report.pdf`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+      }
+    } catch (err) {
+      console.error('Error generating report:', err)
+    } finally {
+      setGenerating(null)
+    }
+  }
+
   const getCategoryColor = (category: string) => {
     switch (category) {
       case 'assessment':
@@ -81,9 +125,20 @@ export function ReportTemplates({ templates }: ReportTemplatesProps) {
                   variant="outline"
                   size="sm"
                   className="flex-1 text-xs h-8"
+                  onClick={() => handleGenerate(template)}
+                  disabled={generating === template.id}
                 >
-                  <FileText className="h-3 w-3 mr-1" />
-                  Generate
+                  {generating === template.id ? (
+                    <span className="flex items-center gap-2">
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      Generating...
+                    </span>
+                  ) : (
+                    <>
+                      <FileText className="h-3 w-3 mr-1" />
+                      Generate
+                    </>
+                  )}
                 </Button>
                 <Button
                   variant="ghost"

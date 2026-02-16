@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
+import { useChat } from '@/hooks/useChat'
 
 interface Message {
   id: string
@@ -20,17 +21,19 @@ interface ChatbotModalProps {
 }
 
 export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
-  const [messages, setMessages] = useState<Message[]>([
+  const { messages: chatMessages, loading: chatLoading, sendMessage } = useChat()
+  const [input, setInput] = useState('')
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Map hook messages to local format if needed, but they are already mostly compatible
+  const messages = chatMessages.length > 0 ? chatMessages : [
     {
       id: '1',
       role: 'assistant',
       content: 'Hello! I\'m your FinGuard AI assistant. How can I help you today?',
       timestamp: new Date(),
     },
-  ])
-  const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const scrollRef = useRef<HTMLDivElement>(null)
+  ]
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -39,40 +42,12 @@ export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
     }
   }, [messages])
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!input.trim()) return
 
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input,
-      timestamp: new Date(),
-    }
-
-    setMessages((prev) => [...prev, userMessage])
+    const messageToSend = input
     setInput('')
-    setIsLoading(true)
-
-    // Simulate assistant response
-    setTimeout(() => {
-      const responses = [
-        'That\'s a great question! Let me help you with that.',
-        'Based on your current financial data, here\'s what I recommend...',
-        'I\'ve analyzed your risk factors and found some insights.',
-        'Your spending pattern shows a slight increase in discretionary expenses.',
-      ]
-
-      const assistantMessage: Message = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: responses[Math.floor(Math.random() * responses.length)],
-        timestamp: new Date(),
-      }
-
-      setMessages((prev) => [...prev, assistantMessage])
-      setIsLoading(false)
-    }, 600)
+    await sendMessage(messageToSend)
   }
 
   const suggestedPrompts = [
@@ -110,7 +85,7 @@ export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
         {/* Messages */}
         <ScrollArea className="flex-1 p-4">
           <div className="space-y-4">
-            {messages.map((message) => (
+            {messages.map((message: any) => (
               <div
                 key={message.id}
                 className={cn(
@@ -137,7 +112,7 @@ export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
               </div>
             ))}
 
-            {isLoading && (
+            {chatLoading && (
               <div className="flex gap-3">
                 <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-semibold text-primary flex-shrink-0">
                   AI
@@ -181,9 +156,9 @@ export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) =>
-                e.key === 'Enter' && !isLoading && handleSendMessage()
+                e.key === 'Enter' && !chatLoading && handleSendMessage()
               }
-              disabled={isLoading}
+              disabled={chatLoading}
               className="bg-secondary border-border"
             />
             <Button
@@ -198,7 +173,7 @@ export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
               size="icon"
               className="h-9 w-9 bg-primary hover:bg-primary/90"
               onClick={handleSendMessage}
-              disabled={!input.trim() || isLoading}
+              disabled={!input.trim() || chatLoading}
             >
               <Send className="h-4 w-4" />
             </Button>

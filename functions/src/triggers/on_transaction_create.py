@@ -1,59 +1,92 @@
-import firebase_admin
-from firebase_admin import firestore, initialize_app
 from firebase_functions import firestore_fn
-from datetime import datetime
-from ..utils.risk_engine import RiskEngine
+from firebase_admin import firestore, initialize_app
+import json
+from datetime import datetime, timedelta
 
-# Initialize Firebase app
-initialize_app()
+# Initialize Firebase Admin if not already initialized
+if not firestore.api_client:
+    initialize_app()
+
 db = firestore.client()
 
-@firestore_fn.on_document_created("transactions/{transactionId}")
+def calculate_risk_features(transactions):
+    """Calculate risk features from transaction list"""
+    if not transactions:
+        return {"score": 50, "factors": ["insufficient_data"]}
+    
+    amounts = [t.get('amount', 0) for t in transactions]
+    categories = [t.get('category', 'unknown') for t in transactions]
+    
+    # Velocity features
+    now = datetime.now()
+    total_7d = sum(a for a, t in zip(amounts, transactions) 
+                   if t.get('timestamp', now).replace(tzinfo=None) > now - timedelta(days=7))
+    total_30d = sum(a for a, t in zip(amounts, transactions) 
+                    if t.get('timestamp', now).replace(tzinfo=None) > now - timedelta(days=30))
+    
+    # Category analysis
+    high_risk_cats = ['cash_advance', 'gambling', 'pawn']
+    high_risk_count = sum(1 for c in categories if c in high_risk_cats)
+    
+    # Calculate score (0-100, higher = more risky)
+    score = 30  # Base score
+    
+    if total_30d < -50000:  # High spending
+        score += 20
+    if high_risk_count > 0:
+        score += 25
+    if len(transactions) < 5:  # New user
+        score += 10
+    
+    factors = []
+    if total_30d < -50000:
+        factors.append("high_monthly_spending")
+    if high_risk_count > 0:
+        factors.append("high_risk_transactions")
+    if total_7d < total_30d / 4:  # Spending accelerating
+        factors.append("spending_velocity_increasing")
+    
+    return {
+        "score": min(100, max(0, score)),
+        "factors": factors if factors else ["stable_pattern"],
+        "total_7d": total_7d,
+        "total_30d": total_30d
+    }
+
+@firestore_fn.on_document_created(document="users/{userId}/transactions/{txId}")
 def on_transaction_create(event):
-    try:
-        # Get transaction data and userId
-        transaction_data = event.data
-        transaction_id = event.params["transactionId"]
-        user_id = transaction_data.get("userId")
-
-        if not user_id:
-            raise ValueError("Transaction does not have a userId")
-
-        # Fetch user's last 50 transactions
-        user_transactions_ref = db.collection("transactions").where("userId", "==", user_id).order_by("timestamp", direction=firestore.Query.DESCENDING).limit(50)
-        user_transactions = [doc.to_dict() for doc in user_transactions_ref.stream()]
-
-        # Calculate risk score using RiskEngine
-        risk_engine = RiskEngine()
-        risk_result = risk_engine.calculate_risk_score(transaction_data, user_transactions)
-
-        # Save risk result to "risk_scores" collection
-        risk_score_data = {
-            "transactionId": transaction_id,
-            "userId": user_id,
-            "score": risk_result["score"],
-            "riskLevel": risk_result["risk_level"],
-            "factors": risk_result["factors"],
-            "timestamp": datetime.utcnow()
-        }
-        risk_score_ref = db.collection("risk_scores").add(risk_score_data)
-
-        # Update original transaction with riskScoreId and riskLevel
-        db.collection("transactions").document(transaction_id).update({
-            "riskScoreId": risk_score_ref[1].id,
-            "riskLevel": risk_result["risk_level"]
+    user_id = event.params["userId"]
+    
+    # Get last 90 days of transactions
+    txs_ref = db.collection('users').document(user_id).collection('transactions')
+    cutoff = datetime.now() - timedelta(days=90)
+    # Note: Firestore query might require an index for order_by and where
+    txs = txs_ref.where('timestamp', '>', cutoff).order_by('timestamp', direction=firestore.Query.DESCENDING).stream()
+    
+    transactions = [t.to_dict() for t in txs]
+    
+    # Calculate risk
+    risk = calculate_risk_features(transactions)
+    
+    # Update risk snapshot
+    db.collection('users').document(user_id).collection('risk_snapshots').document('latest').set({
+        'value': risk['score'],
+        'factors': risk['factors'],
+        'trend': 'up' if risk['score'] > 50 else 'down',
+        'timestamp': firestore.SERVER_TIMESTAMP,
+        'total_7d': risk.get('total_7d', 0),
+        'total_30d': risk.get('total_30d', 0)
+    })
+    
+    # Create alert if high risk
+    if risk['score'] > 60:
+        db.collection('users').document(user_id).collection('alerts').add({
+            'title': 'High Financial Risk Detected',
+            'message': f"Your risk score is {risk['score']}/100. {', '.join(risk['factors'])}",
+            'severity': 'high' if risk['score'] > 75 else 'medium',
+            'type': 'predictive',
+            'acknowledged': False,
+            'timestamp': firestore.SERVER_TIMESTAMP
         })
-
-        # Create alert if risk level is high or critical
-        if risk_result["risk_level"] in ["high", "critical"]:
-            alert_data = {
-                "transactionId": transaction_id,
-                "userId": user_id,
-                "riskLevel": risk_result["risk_level"],
-                "score": risk_result["score"],
-                "timestamp": datetime.utcnow()
-            }
-            db.collection("alerts").add(alert_data)
-
-    except Exception as e:
-        print(f"Error processing transaction {event.params['transactionId']}: {e}")
+    
+    return f"Updated risk for {user_id}: {risk['score']}"

@@ -35,6 +35,9 @@ export interface Transaction {
   category: TransactionCategory
   riskFlag?: boolean
   merchantName: string
+  merchantNameEncrypted?: string
+  descriptionEncrypted?: string
+  categoryEncrypted?: string
 }
 
 /* Alert */

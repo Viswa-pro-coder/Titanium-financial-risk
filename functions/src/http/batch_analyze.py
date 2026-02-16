@@ -1,71 +1,93 @@
-from flask import Flask, request, jsonify
-from firebase_admin import firestore
 from firebase_functions import https_fn
+from firebase_admin import firestore, initialize_app
+import json
+import csv
+import io
 from datetime import datetime
-import firebase_admin
-from firebase_admin import initialize_app
 
-# Initialize Firebase app
-initialize_app()
+# Initialize Firebase Admin if not already initialized
+if not firestore.api_client:
+    initialize_app()
+
 db = firestore.client()
 
-app = Flask(__name__)
-
-@app.route('/batch_analyze', methods=['POST'])
-def batch_analyze():
-    """
-    HTTP Cloud Function to handle bulk risk analysis requests.
-    Stub for Person 4 - implement actual batch processing here.
-    """
-    try:
-        # Set CORS headers
-        response_headers = {
+@https_fn.on_request()
+def batch_analyze(req):
+    # Enable CORS
+    if req.method == 'OPTIONS':
+        headers = {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'POST',
-            'Access-Control-Allow-Headers': 'Content-Type'
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Max-Age': '3600'
         }
+        return https_fn.Response('', status=204, headers=headers)
 
-        # Validate request method
-        if request.method != 'POST':
-            return jsonify({"error": "Method not allowed"}), 405, response_headers
+    headers = {'Access-Control-Allow-Origin': '*'}
 
-        # Parse and validate JSON body
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "Invalid JSON body"}), 400, response_headers
+    if req.method != 'POST':
+        return https_fn.Response('Method not allowed', status=405, headers=headers)
+    
+    try:
+        data = req.get_json()
+        analyst_id = data.get('analystId')
+        csv_content = data.get('csv')  # Base64 or raw CSV string
+        
+        if not analyst_id or not csv_content:
+            return https_fn.Response(
+                json.dumps({'success': False, 'error': 'Missing analystId or csv'}),
+                mimetype='application/json',
+                status=400,
+                headers=headers
+            )
 
-        user_ids = data.get('userIds', [])
-        analysis_type = data.get('analysisType')
-        parameters = data.get('parameters', {})
-
-        if not user_ids or not isinstance(user_ids, list):
-            return jsonify({"error": "userIds must be a non-empty array"}), 400, response_headers
-
-        # Create batch job document in Firestore
-        batch_job_data = {
-            "userIds": user_ids,
-            "analysisType": analysis_type,
-            "parameters": parameters,
-            "status": "queued",
-            "totalUsers": len(user_ids),
-            "processedUsers": 0,
-            "results": [],
-            "createdAt": datetime.utcnow(),
-            "startedAt": None,
-            "completedAt": None
-        }
-        batch_job_ref = db.collection("batch_jobs").add(batch_job_data)
-
-        # Return response
-        response_data = {
-            "jobId": batch_job_ref[1].id,
-            "status": "queued",
-            "message": f"Batch job created for {len(user_ids)} users."
-        }
-        return jsonify(response_data), 202, response_headers
-
+        # Parse CSV
+        csv_file = io.StringIO(csv_content)
+        reader = csv.DictReader(csv_file)
+        
+        results = []
+        for row in reader:
+            client_id = row.get('client_id', 'unknown')
+            # Simple risk calc based on provided data
+            try:
+                income = float(row.get('income', 0))
+                expenses = float(row.get('expenses', 0))
+                debt = float(row.get('debt', 0))
+            except (ValueError, TypeError):
+                income, expenses, debt = 0, 0, 0
+            
+            # Basic risk formula
+            risk = 30
+            if income > 0 and expenses > income * 0.8:
+                risk += 30
+            if income > 0 and debt > income * 3:
+                risk += 25
+            
+            results.append({
+                'client_id': client_id,
+                'risk_score': min(100, risk),
+                'status': 'completed',
+                'analyzed_at': datetime.now().isoformat()
+            })
+        
+        # Store results for analyst
+        batch_ref = db.collection('analysts').document(analyst_id).collection('batch_results').document()
+        batch_ref.set({
+            'results': results,
+            'created_at': firestore.SERVER_TIMESTAMP,
+            'total_clients': len(results)
+        })
+        
+        return https_fn.Response(
+            json.dumps({'success': True, 'batch_id': batch_ref.id, 'results': results}),
+            mimetype='application/json',
+            headers=headers
+        )
+        
     except Exception as e:
-        return jsonify({"error": f"Internal server error: {str(e)}"}), 500, response_headers
-
-# Export the function for Firebase Functions
-batch_analyze_function = https_fn.wrap_flask_app(app)
+        return https_fn.Response(
+            json.dumps({'success': False, 'error': str(e)}),
+            mimetype='application/json',
+            status=500,
+            headers=headers
+        )

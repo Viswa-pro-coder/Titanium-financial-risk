@@ -141,8 +141,8 @@ export function TransactionsTable({ transactions }: TransactionsTableProps) {
                   </TableCell>
                   <TableCell>
                     {transaction.riskFlag && (
-                      <div className="flex justify-center">
-                        <AlertCircle className="h-4 w-4 text-rose-500" title="Unusual transaction" />
+                      <div className="flex justify-center" title="Unusual transaction">
+                        <AlertCircle className="h-4 w-4 text-rose-500" />
                       </div>
                     )}
                   </TableCell>

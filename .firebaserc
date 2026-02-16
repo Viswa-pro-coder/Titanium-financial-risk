@@ -1,7 +1,5 @@
 {
   "projects": {
-    "default": "finguard-ai-dev",
-    "staging": "finguard-ai-staging",
-    "prod": "finguard-ai-prod"
+    "default": "finguard-ai-55aec"
   }
 }

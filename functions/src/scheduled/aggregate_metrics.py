@@ -1,71 +1,56 @@
-import firebase_admin
-from firebase_admin import firestore
 from firebase_functions import scheduler_fn
+from firebase_admin import firestore, initialize_app
 from datetime import datetime, timedelta
 
-# Initialize Firebase app
-firebase_admin.initialize_app()
+# Initialize Firebase Admin if not already initialized
+if not firestore.api_client:
+    initialize_app()
+
 db = firestore.client()
 
-@scheduler_fn.on_schedule("every 60 minutes")
-def aggregate_institution_metrics(event):
-    """
-    Scheduled Cloud Function to aggregate institution metrics every 60 minutes.
-    """
-    try:
-        # Get the current timestamp and 24 hours ago
-        now = datetime.utcnow()
-        one_day_ago = now - timedelta(hours=24)
-
-        # Query users collection for B2B and B2Pro tiers
-        users_ref = db.collection("users").where("tier", "in", ["b2b", "b2pro"])
-        users = [user.to_dict() for user in users_ref.stream()]
-
-        for user in users:
-            institution_id = user.get("institutionId")
-            if not institution_id:
-                continue
-
-            # Query transactions for the last 24 hours
-            transactions_ref = db.collection("transactions").where("userId", "==", user["userId"]).where("timestamp", ">=", one_day_ago)
-            transactions = [t.to_dict() for t in transactions_ref.stream()]
-
-            # Calculate metrics
-            total_volume = sum(t.get("amount", 0) for t in transactions)
-            transaction_count = len(transactions)
-            avg_transaction_value = total_volume / transaction_count if transaction_count > 0 else 0
-            avg_risk_score = sum(t.get("riskScore", 0) for t in transactions) / transaction_count if transaction_count > 0 else 0
-
-            high_risk_count = sum(1 for t in transactions if t.get("riskScore", 0) >= 75)
-            medium_risk_count = sum(1 for t in transactions if 40 <= t.get("riskScore", 0) < 75)
-            low_risk_count = sum(1 for t in transactions if t.get("riskScore", 0) < 40)
-
-            # Count merchant types
-            merchant_type_counts = {}
-            for t in transactions:
-                merchant_type = t.get("merchantType", "unknown")
-                merchant_type_counts[merchant_type] = merchant_type_counts.get(merchant_type, 0) + 1
-
-            top_5_merchant_types = sorted(merchant_type_counts.items(), key=lambda x: x[1], reverse=True)[:5]
-
-            # Save metrics to Firestore
-            metrics_data = {
-                "institutionId": institution_id,
-                "timestamp": now,
-                "totalVolume": total_volume,
-                "transactionCount": transaction_count,
-                "avgTransactionValue": avg_transaction_value,
-                "avgRiskScore": avg_risk_score,
-                "highRiskCount": high_risk_count,
-                "mediumRiskCount": medium_risk_count,
-                "lowRiskCount": low_risk_count,
-                "topMerchantTypes": [merchant[0] for merchant in top_5_merchant_types]
-            }
-
-            document_id = f"{institution_id}_{now.strftime('%Y%m%d%H%M%S')}"
-            db.collection("institution_metrics").document(document_id).set(metrics_data)
-
-            print(f"Metrics saved for institution {institution_id} with document ID {document_id}")
-
-    except Exception as e:
-        print(f"Error aggregating institution metrics: {str(e)}")
+@scheduler_fn.on_schedule(schedule="every 5 minutes")
+def aggregate_metrics(event):
+    # Get all institutions
+    institutions = db.collection('institutions').stream()
+    count = 0
+    
+    for inst in institutions:
+        inst_id = inst.id
+        inst_ref = inst.reference
+        count += 1
+        
+        # Get all linked users
+        users = inst_ref.collection('users').stream()
+        user_ids = [u.id for u in users]
+        
+        if not user_ids:
+            continue
+        
+        # Aggregate risk scores
+        total_risk = 0
+        high_risk_count = 0
+        critical_count = 0
+        
+        for uid in user_ids:
+            risk_doc = db.collection('users').document(uid).collection('risk_snapshots').document('latest').get()
+            if risk_doc.exists:
+                score = risk_doc.to_dict().get('value', 50)
+                total_risk += score
+                if score > 70:
+                    high_risk_count += 1
+                if score > 85:
+                    critical_count += 1
+        
+        avg_risk = total_risk / len(user_ids) if user_ids else 50
+        
+        # Update metrics
+        inst_ref.collection('metrics').document('realtime').set({
+            'average_risk': avg_risk,
+            'total_customers': len(user_ids),
+            'high_risk_count': high_risk_count,
+            'critical_count': critical_count,
+            'compliance_rate': 100 - (high_risk_count / len(user_ids) * 100) if user_ids else 100,
+            'updated_at': firestore.SERVER_TIMESTAMP
+        })
+    
+    return f"Aggregated {count} institutions"

@@ -10,9 +10,10 @@ import { cn } from '@/lib/utils'
 
 interface AlertsCenterProps {
   alerts: Alert[]
+  onAcknowledge?: (id: string) => void
 }
 
-export function AlertsCenter({ alerts }: AlertsCenterProps) {
+export function AlertsCenter({ alerts, onAcknowledge }: AlertsCenterProps) {
   const [acknowledgedAlerts, setAcknowledgedAlerts] = useState(
     new Set(alerts.filter((a) => a.acknowledged).map((a) => a.id))
   )
@@ -23,6 +24,7 @@ export function AlertsCenter({ alerts }: AlertsCenterProps) {
       next.add(id)
       return next
     })
+    onAcknowledge?.(id)
   }
 
   const getSeverityIcon = (severity: string) => {
@@ -124,7 +126,7 @@ export function AlertsCenter({ alerts }: AlertsCenterProps) {
                         <span className="text-xs opacity-75">
                           {Math.round(
                             (Date.now() - alert.timestamp.getTime()) /
-                              (60 * 60 * 1000)
+                            (60 * 60 * 1000)
                           )}{' '}
                           hours ago
                         </span>

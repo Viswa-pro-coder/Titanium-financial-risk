@@ -1,0 +1,94 @@
+# FinGuard AI - Full Testing & Setup Guide
+
+This guide explains how to run the application and verify all core AI and Security features.
+
+---
+
+## 🛠️ 1. Initial Setup
+
+### Prerequisites
+- Node.js (v18+)
+- Python (3.11+)
+- Firebase CLI (`npm install -g firebase-tools`)
+
+### Installation
+```bash
+# Install frontend dependencies
+npm install
+
+# Install backend dependencies (Cloud Functions)
+cd functions
+pip install -r requirements.txt
+cd ..
+```
+
+---
+
+## 🚀 2. Running the Application
+
+### A. Start Firebase Emulators
+The backend services (Firestore, Auth, Functions) run locally:
+```bash
+firebase emulators:start
+```
+
+### B. Verification: Clean State
+- **Action**: Log in with a fresh account.
+- **Check**: All dashboard metrics (Consumer, Institution, Analyst) should show **0**, **₹0**, or **Unknown**. There should be no hardcoded mock data.
+
+### C. Module-Specific File Uploads
+Each dashboard now has a specialized upload zone:
+- **Consumer**: "Upload Financial Statements" (Bottom right).
+- **Institution**: "Bulk Portfolio Audit" (Bottom right).
+- **Analyst**: "Client Research Data" (Right sidebar).
+- **Test**: Try dragging a file into each. They are isolated to their respective modules.
+
+### D. Seed Demo Data
+Populate the emulator with realistic clients, transactions, and risk history:
+```bash
+node scripts/seedDemo.js
+```
+
+### E. Start Next.js Development Server
+```bash
+npm run dev
+```
+
+---
+
+## 🤖 3. Testing AI & Machine Learning
+
+### A. Ensemble Risk Model
+Train the hybrid ML engine (XGBoost, Random Forest, Logistic Regression):
+```bash
+python functions/src/utils/train_risk_model.py
+```
+- **Verification**: Run `python functions/src/utils/test_risk_engine.py`.
+- **UI Check**: Go to the **Consumer Dashboard**. You should see a Risk Score gauge.
+
+### B. RAG-Enhanced Chatbot
+Ingest the financial knowledge base into the vector store:
+```bash
+python ai/rag/ingest_knowledge.py
+```
+- **UI Check**: Open the Chatbot in the **Consumer Dashboard**.
+- **Test Query**: "How is my risk calculated?"
+
+---
+
+## 🛡️ 4. Testing Security & Privacy
+
+### A. Field-Level Encryption
+Verify that sensitive data is encrypted before hitting Firestore and decrypted in the UI.
+```bash
+node scripts/verify-encryption.js
+```
+
+---
+
+## 📊 5. Testing Analyst Features
+
+### A. PDF Report Generation
+- **UI Check**: Navigate to the **Analyst Dashboard**.
+- **Action**: Click on **"Report Templates"** and select **"Generate Report"**.
+- **Result**: A professional PDF document will be downloaded.

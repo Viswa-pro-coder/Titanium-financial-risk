@@ -16,3 +16,7 @@ accelerate
 bitsandbytes
 chromadb
 sentence-transformers
+cryptography>=41.0.0
+
+scikit-learn>=1.3.0
+joblib>=1.3.0

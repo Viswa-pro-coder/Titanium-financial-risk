@@ -1,3 +1,8 @@
+import joblib
+import pandas as pd
+import numpy as np
+import os
+
 class RiskEngine:
     def __init__(self):
         # Define weights for each risk factor
@@ -8,6 +13,21 @@ class RiskEngine:
             'time': 0.15,
             'merchant': 0.1
         }
+        self.model = self.load_model()
+    
+    def load_model(self):
+        """Load the trained ensemble risk model."""
+        try:
+            model_path = os.path.join(os.path.dirname(__file__), 'risk_model.joblib')
+            if os.path.exists(model_path):
+                print(f"Loading risk model from {model_path}")
+                return joblib.load(model_path)
+            else:
+                print("Risk model not found, using rule-based engine only.")
+                return None
+        except Exception as e:
+            print(f"Error loading risk model: {e}")
+            return None
 
     def calculate_risk_score(self, transaction, user_history):
         """
@@ -28,8 +48,35 @@ class RiskEngine:
             'merchant': self._calculate_merchant_risk(transaction)
         }
 
-        # Calculate the total risk score
-        total_score = sum(factors[factor] * self.weights[factor] for factor in factors)
+        # Calculate the rule-based risk score
+        rule_score = sum(factors[factor] * self.weights[factor] for factor in factors)
+        
+        # Calculate ML model score if available
+        model_score = 0
+        if self.model:
+            try:
+                # Prepare features for the model matching training data
+                features = pd.DataFrame([{
+                    'amount': transaction.get('amount', 0),
+                    'time_of_day': transaction.get('time_of_day', 12),
+                    'location_risk': 1 if factors['location'] > 50 else 0,
+                    'merchant_risk': 1 if factors['merchant'] > 50 else 0,
+                    'frequency': len([t for t in user_history if t['timestamp'] > transaction['timestamp'] - 86400])
+                }])
+                
+                # Predict probability (returns [prob_legit, prob_fraud])
+                fraud_prob = self.model.predict_proba(features)[0][1]
+                model_score = fraud_prob * 100
+                print(f"ML Model Fraud Probability: {fraud_prob:.4f}, Score: {model_score}")
+            except Exception as e:
+                print(f"Error in model prediction: {e}")
+                model_score = rule_score # Fallback
+        
+        # Combined Score (Weighted Average: 60% Rules, 40% ML)
+        if self.model:
+            total_score = (rule_score * 0.6) + (model_score * 0.4)
+        else:
+            total_score = rule_score
 
         # Determine risk level
         if total_score < 25:
